@@ -1,13 +1,34 @@
 #include <MsgBoxConstants.au3>
 #include <APIErrorsConstants.au3>
+#include <StringConstants.au3>
 
 Const $g_sShareUNCkey = "share"
 Const $g_sDriveFriendlyNameKey = "friendlyName"
 Const $g_sKeyNotFound = "KEY NOT FOUND"
 Const $g_iDriveMapAddShowAuthDlg = 8
+Const $g_sDefaultIniFileName = "mappings.ini"
 Const $DEBUG = 0
 
-_DoAllMappings(@ScriptDir & '\example.ini')
+_DoAllMappings(_getIniFile())
+
+func _getIniFile()
+	local $inifile = ''
+	if $CmdLine[0] > 0 then
+		$inifile = $CmdLine[1]
+	else
+		$inifile = @ScriptDir & '\' & $g_sDefaultIniFileName
+	endif
+	
+	_debugmsg("$inifile =" & $inifile)
+	
+	if _IsNormalFile($inifile) then
+		_debugmsg("_IsNormalFile=True")
+		return $inifile
+	else
+		_debugmsg("_IsNormalFile=False")
+		Return SetError(999, 999, "Not a valid file")
+	endif
+endfunc
 
 
 func _DoAllMappings($sFilePath)
@@ -75,7 +96,7 @@ Func _NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell)
 		$iAttempts += 1
 		select
 			case 0=$iError
-				if $DEBUG then msgbox($MB_SYSTEMMODAL, "", "$sDriveLetter=" & $sDriveLetter & "    $sDriveName=" & $sDriveName)
+				_debugmsg("$sDriveLetter=" & $sDriveLetter & "    $sDriveName=" & $sDriveName)
 				$oShell.NameSpace($sDriveLetter).Self.Name =  $sDriveName
 				return 1
 			case (1=$iError) and ($iExtended=$ERROR_CANCELLED)
@@ -93,4 +114,20 @@ Func _NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell)
 	return 0
 EndFunc
 
+
+Func _IsNormalFile($sFilePath)
+	if fileexists($sFilePath) then
+		local $sfileAtb = FileGetAttrib($sFilePath)
+		_debugmsg("FileGetAttrib($sFilePath)=" & $sfileAtb)
+		return StringInStr($sfileAtb, 'D', $STR_NOCASESENSE) == 0
+	else
+		_debugmsg("fileexists($sFilePath)=False")
+		return false
+	endif
+EndFunc   ;==>IsFilee
+
+
+func _debugmsg($sMsg)
+	if $DEBUG then msgbox($MB_SYSTEMMODAL, "Drive Mapper Debug Message", $sMsg)
+endfunc
 
