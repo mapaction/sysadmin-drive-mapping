@@ -74,27 +74,16 @@ EndFunc
 
 
 Func _NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell)
-	local $iAttempts = 1
-	local $iMaxAttemps = 3
+	local $iAttempts = 3
 	local $iError = -1, $iExtended
 
-	#CS 
-	Success: 	1. (See Remarks)
-	Failure: 	0 if a new mapping could not be created and sets the @error flag to non-zero.
-	@error: 	1 = Undefined / Other error. @extended set with Windows API return
-	2 = Access to the remote share was denied
-	3 = The device is already assigned
-	4 = Invalid device name
-	5 = Invalid remote share
-	6 = Invalid password
-	#CE
-	
 	do 
 		DriveMapAdd($sDriveLetter, $sShareUNC, $g_iDriveMapAddShowAuthDlg )
 		$iError = @error
 		$iExtended = @extended
-		$iAttempts += 1
-		select
+		$iAttempts
+	until not _isRetryRequired($iAttempts, $iError, $iExtended)
+#CS 		select
 			case 0=$iError
 				_debugmsg("$sDriveLetter=" & $sDriveLetter & "    $sDriveName=" & $sDriveName)
 				$oShell.NameSpace($sDriveLetter).Self.Name =  $sDriveName
@@ -109,9 +98,41 @@ Func _NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell)
 				exitloop
 		endselect
 	until $iAttempts >= $iMaxAttemps
-	
-	msgbox($MB_SYSTEMMODAL, "Error connecting to network drive", "$sDriveLetter=" & $sDriveLetter & "    $sDriveName=" & $sDriveName & " @error=" & $iError & " @extended=" & $iExtended)
+ #CE	
+	# _debugmsg("Error connecting to network drive; $sDriveLetter=" & $sDriveLetter & "    $sDriveName=" & $sDriveName & " @error=" & $iError & " @extended=" & $iExtended)
 	return 0
+EndFunc
+
+Func _isRetryRequired(ByRef $iRetryCnt, $iError, $iExtended)
+	Local $b_rst
+	
+	$iRetryCnt = $iRetryCnt - 1
+	
+	select
+		case 0 >= $iRetryCnt
+			$b_rst = false
+		case 0 = $iError
+			$b_rst = false
+			
+		case (1=$iError) and ($iExtended=$ERROR_CANCELLED)
+			_debugmsg("Cancelled connecting to network drive")
+			$b_rst = false
+		case (3=$iError) or (4=$iError) or (5=$iError)
+			_debugmsg("Wrong username and password")
+			$b_rst = false
+
+		case (1=$iError) and ($iExtended=$ERROR_SESSION_CREDENTIAL_CONFLICT)
+			_debugmsg("Wrong username and password")
+			$b_rst = true
+		case (2=$iError) or (6=$iError)
+			_debugmsg("Wrong username and password")
+			$b_rst = true
+		case else
+			_debugmsg("Unknown error")
+			$b_rst = true
+	endselect
+
+	return $b_rst
 EndFunc
 
 
