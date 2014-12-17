@@ -37,16 +37,20 @@ func _DoAllMappings($sFilePath)
     if @error then
         Return SetError(1, 0)
     EndIf
+	_debugmsg("$aSectionNames" & UBound($aSectionNames))
 	for $sDriveLetter in $aSectionNames
 		if _isValidDriveName($sDriveLetter) then
+			_debugmsg("$sDriveLetter " & $sDriveLetter)
 			$sShareUNC = IniRead($sFilePath, $sDriveLetter, $g_sShareUNCkey, $g_sKeyNotFound)
 			$sDriveName = IniRead($sFilePath, $sDriveLetter, $g_sDriveFriendlyNameKey, $g_sKeyNotFound)
 			
 			if _RemoveOldMapping($sDriveLetter, $sShareUNC) then
-				_NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell)
+				if not _NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell) then
+					# The user canceled the dialog so
+					# do not attempt additional mappings
+					exitloop
+				endif
 			endif
-			;DriveMapAdd ( "device", "remote share" [, flags = 0 [, "user" [, "password"]]] )
-		;	msgbox("device" & & "  remote share" &
 		endif
 	next 
 endfunc
@@ -72,35 +76,30 @@ Func _RemoveOldMapping($sDriveLetter, $sShareUNC)
     endif
 EndFunc
 
-
+#
+; Returns true if 
 Func _NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell)
 	local $iAttempts = 3
 	local $iError = -1, $iExtended
 
 	do 
-		DriveMapAdd($sDriveLetter, $sShareUNC, $g_iDriveMapAddShowAuthDlg )
+		DriveMapAdd($sDriveLetter, $sShareUNC, $g_iDriveMapAddShowAuthDlg)
 		$iError = @error
 		$iExtended = @extended
 		$iAttempts
 	until not _isRetryRequired($iAttempts, $iError, $iExtended)
-#CS 		select
-			case 0=$iError
-				_debugmsg("$sDriveLetter=" & $sDriveLetter & "    $sDriveName=" & $sDriveName)
-				$oShell.NameSpace($sDriveLetter).Self.Name =  $sDriveName
-				return 1
-			case (1=$iError) and ($iExtended=$ERROR_CANCELLED)
-				msgbox($MB_SYSTEMMODAL, "", "Cancelled connecting to network drive")
-				return 0
-			case (1=$iError) and ($iExtended=$ERROR_SESSION_CREDENTIAL_CONFLICT)
-				msgbox($MB_SYSTEMMODAL, "", "Wrong username and password")
-			case (2=$iError) or (6=$iError)
-			case else
-				exitloop
-		endselect
-	until $iAttempts >= $iMaxAttemps
- #CE	
-	# _debugmsg("Error connecting to network drive; $sDriveLetter=" & $sDriveLetter & "    $sDriveName=" & $sDriveName & " @error=" & $iError & " @extended=" & $iExtended)
-	return 0
+	
+	# If sucessful apply the friendly name
+	if 0=$iError then
+		$oShell.NameSpace($sDriveLetter).Self.Name =  $sDriveName
+	endif
+	
+	# If the user canceled the dialog return false so that additional mappings are not attempted
+	if (1=$iError) and ($iExtended=$ERROR_CANCELLED) then
+		return false
+	else
+		return true
+	endif
 EndFunc
 
 Func _isRetryRequired(ByRef $iRetryCnt, $iError, $iExtended)
@@ -145,8 +144,7 @@ Func _IsNormalFile($sFilePath)
 		_debugmsg("fileexists($sFilePath)=False")
 		return false
 	endif
-EndFunc   ;==>IsFilee
-
+EndFunc  
 
 func _debugmsg($sMsg)
 	if $DEBUG then msgbox($MB_SYSTEMMODAL, "Drive Mapper Debug Message", $sMsg)

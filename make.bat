@@ -1,1 +1,1 @@
-"%ProgramFiles(x86)%\AutoIt3\Aut2Exe\Aut2exe.exe" /in drive-mapper.au3 /out drivemapper.exe /comp 0
+"%ProgramFiles(x86)%\AutoIt3\Aut2Exe\Aut2exe.exe" /in drive-mapper.au3 /out drivemapper.exe /comp 0 /icon gnome_folder_remote.ico

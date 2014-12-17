@@ -24,18 +24,6 @@ Test Result: pass
 ==> Step: Result: 'A' is invalid Result: pass
 
 ------------------------------------
-Test Name: Test _RemoveOldMapping
-Test Result: fail
-
-==> Step: Result: No tests implemented yet Result: fail
-
-------------------------------------
-Test Name: Test _NewMapping
-Test Result: fail
-
-==> Step: Result: No tests implemented yet Result: fail
-
-------------------------------------
 Test Name: Test _isRetryRequired
 Test Result: pass
 
@@ -62,4 +50,4 @@ Test Result: fail
 =======================================
 Test suite: test-drive-mapper
 Global result: fail
-Finished in: 0 seconds.7 tests,5 failures,2 passed
+Finished in: 1 seconds.5 tests,3 failures,2 passed

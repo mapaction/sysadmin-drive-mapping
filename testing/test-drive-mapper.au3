@@ -48,15 +48,17 @@ Func testSuite()
 	$test.addToSuite($testSuite) ;Add test case into the test suite
 	$test = 0
 
-	Local $test	= _test_("Test _RemoveOldMapping")
+	#CS Local $test	= _test_("Test _RemoveOldMapping")
 	$test.step("No tests implemented yet", false)
 	$test.addToSuite($testSuite) ;Add test case into the test suite
 	$test = 0
+	#CE
 	
-	Local $test	= _test_("Test _NewMapping")
+	#CS Local $test	= _test_("Test _NewMapping")
 	$test.step("No tests implemented yet", false)
 	$test.addToSuite($testSuite) ;Add test case into the test suite
 	$test = 0
+	#CE	
 	
 	Local $test	= _test_("Test _isRetryRequired")
 	# _isRetryRequired(ByRef iRetry,iError,iExtended)
