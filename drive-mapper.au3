@@ -1,13 +1,34 @@
 #include <MsgBoxConstants.au3>
 #include <APIErrorsConstants.au3>
+#include <StringConstants.au3>
 
 Const $g_sShareUNCkey = "share"
 Const $g_sDriveFriendlyNameKey = "friendlyName"
 Const $g_sKeyNotFound = "KEY NOT FOUND"
 Const $g_iDriveMapAddShowAuthDlg = 8
+Const $g_sDefaultIniFileName = "mappings.ini"
 Const $DEBUG = 0
 
-_DoAllMappings(@ScriptDir & '\example.ini')
+_DoAllMappings(_getIniFile())
+
+func _getIniFile()
+	local $inifile = ''
+	if $CmdLine[0] > 0 then
+		$inifile = $CmdLine[1]
+	else
+		$inifile = @ScriptDir & '\' & $g_sDefaultIniFileName
+	endif
+	
+	_debugmsg("$inifile =" & $inifile)
+	
+	if _IsNormalFile($inifile) then
+		_debugmsg("_IsNormalFile=True")
+		return $inifile
+	else
+		_debugmsg("_IsNormalFile=False")
+		Return SetError(999, 999, "Not a valid file")
+	endif
+endfunc
 
 
 func _DoAllMappings($sFilePath)
@@ -16,16 +37,20 @@ func _DoAllMappings($sFilePath)
     if @error then
         Return SetError(1, 0)
     EndIf
+	_debugmsg("$aSectionNames" & UBound($aSectionNames))
 	for $sDriveLetter in $aSectionNames
 		if _isValidDriveName($sDriveLetter) then
+			_debugmsg("$sDriveLetter " & $sDriveLetter)
 			$sShareUNC = IniRead($sFilePath, $sDriveLetter, $g_sShareUNCkey, $g_sKeyNotFound)
 			$sDriveName = IniRead($sFilePath, $sDriveLetter, $g_sDriveFriendlyNameKey, $g_sKeyNotFound)
 			
 			if _RemoveOldMapping($sDriveLetter, $sShareUNC) then
-				_NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell)
+				if not _NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell) then
+					# The user canceled the dialog so
+					# do not attempt additional mappings
+					exitloop
+				endif
 			endif
-			;DriveMapAdd ( "device", "remote share" [, flags = 0 [, "user" [, "password"]]] )
-		;	msgbox("device" & & "  remote share" &
 		endif
 	next 
 endfunc
@@ -51,46 +76,77 @@ Func _RemoveOldMapping($sDriveLetter, $sShareUNC)
     endif
 EndFunc
 
-
+#
+; Returns true if 
 Func _NewMapping($sDriveLetter, $sShareUNC, $sDriveName, $oShell)
-	local $iAttempts = 1
-	local $iMaxAttemps = 3
+	local $iAttempts = 3
 	local $iError = -1, $iExtended
 
-	#CS 
-	Success: 	1. (See Remarks)
-	Failure: 	0 if a new mapping could not be created and sets the @error flag to non-zero.
-	@error: 	1 = Undefined / Other error. @extended set with Windows API return
-	2 = Access to the remote share was denied
-	3 = The device is already assigned
-	4 = Invalid device name
-	5 = Invalid remote share
-	6 = Invalid password
-	#CE
-	
 	do 
-		DriveMapAdd($sDriveLetter, $sShareUNC, $g_iDriveMapAddShowAuthDlg )
+		DriveMapAdd($sDriveLetter, $sShareUNC, $g_iDriveMapAddShowAuthDlg)
 		$iError = @error
 		$iExtended = @extended
-		$iAttempts += 1
-		select
-			case 0=$iError
-				if $DEBUG then msgbox($MB_SYSTEMMODAL, "", "$sDriveLetter=" & $sDriveLetter & "    $sDriveName=" & $sDriveName)
-				$oShell.NameSpace($sDriveLetter).Self.Name =  $sDriveName
-				return 1
-			case (1=$iError) and ($iExtended=$ERROR_CANCELLED)
-				msgbox($MB_SYSTEMMODAL, "", "Cancelled connecting to network drive")
-				return 0
-			case (1=$iError) and ($iExtended=$ERROR_SESSION_CREDENTIAL_CONFLICT)
-				msgbox($MB_SYSTEMMODAL, "", "Wrong username and password")
-			case (2=$iError) or (6=$iError)
-			case else
-				exitloop
-		endselect
-	until $iAttempts >= $iMaxAttemps
+		$iAttempts
+	until not _isRetryRequired($iAttempts, $iError, $iExtended)
 	
-	msgbox($MB_SYSTEMMODAL, "Error connecting to network drive", "$sDriveLetter=" & $sDriveLetter & "    $sDriveName=" & $sDriveName & " @error=" & $iError & " @extended=" & $iExtended)
-	return 0
+	# If sucessful apply the friendly name
+	if 0=$iError then
+		$oShell.NameSpace($sDriveLetter).Self.Name =  $sDriveName
+	endif
+	
+	# If the user canceled the dialog return false so that additional mappings are not attempted
+	if (1=$iError) and ($iExtended=$ERROR_CANCELLED) then
+		return false
+	else
+		return true
+	endif
 EndFunc
 
+Func _isRetryRequired(ByRef $iRetryCnt, $iError, $iExtended)
+	Local $b_rst
+	
+	$iRetryCnt = $iRetryCnt - 1
+	
+	select
+		case 0 >= $iRetryCnt
+			$b_rst = false
+		case 0 = $iError
+			$b_rst = false
+			
+		case (1=$iError) and ($iExtended=$ERROR_CANCELLED)
+			_debugmsg("Cancelled connecting to network drive")
+			$b_rst = false
+		case (3=$iError) or (4=$iError) or (5=$iError)
+			_debugmsg("Wrong username and password")
+			$b_rst = false
+
+		case (1=$iError) and ($iExtended=$ERROR_SESSION_CREDENTIAL_CONFLICT)
+			_debugmsg("Wrong username and password")
+			$b_rst = true
+		case (2=$iError) or (6=$iError)
+			_debugmsg("Wrong username and password")
+			$b_rst = true
+		case else
+			_debugmsg("Unknown error")
+			$b_rst = true
+	endselect
+
+	return $b_rst
+EndFunc
+
+
+Func _IsNormalFile($sFilePath)
+	if fileexists($sFilePath) then
+		local $sfileAtb = FileGetAttrib($sFilePath)
+		_debugmsg("FileGetAttrib($sFilePath)=" & $sfileAtb)
+		return StringInStr($sfileAtb, 'D', $STR_NOCASESENSE) == 0
+	else
+		_debugmsg("fileexists($sFilePath)=False")
+		return false
+	endif
+EndFunc  
+
+func _debugmsg($sMsg)
+	if $DEBUG then msgbox($MB_SYSTEMMODAL, "Drive Mapper Debug Message", $sMsg)
+endfunc
 
