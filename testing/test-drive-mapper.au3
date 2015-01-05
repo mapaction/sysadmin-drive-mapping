@@ -8,8 +8,11 @@
 #Region Test suite definition
 $testSuite = newTestSuite("test-drive-mapper")
 
+If $CmdLine[0] > 0 Then
+    $testSuite.ci = True
+EndIf
+
 With $testSuite
-	.ci = false
 	.addTest(test_getIniFile())
 	.addTest(test_parseIniFile())
 	.addTest(test_isValidDriveName())
