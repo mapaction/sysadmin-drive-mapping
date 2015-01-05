@@ -11,7 +11,7 @@ $testSuite = newTestSuite("test-drive-mapper")
 With $testSuite
 	.ci = false
 	.addTest(test_getIniFile())
-	.addTest(test_DoAllMappings())
+	.addTest(test_parseIniFile())
 	.addTest(test_isValidDriveName())
 	.addTest(test_isRetryRequired())
 	.addTest(test_IsNormalFile())
@@ -24,16 +24,28 @@ EndWith
 
 func test_getIniFile()
 	Local $test	= newTest("Test _getIniFile")
-	$test.addStep("example.ini", false)
-	$test.addStep("nonexistent.ini", false)
-	; $test.addToSuite($testSuite) ;Add test case into the test suite
+	Local $noCmdParams
+	$test.assertEquals("default mappings.ini", _getIniFile($noCmdParams), @ScriptDir & "\mappings.ini")
+	Local $cmdParams[2] = [1, @ScriptDir & "\..\example.ini"]
+	$test.assertEquals("example.ini", _getIniFile($cmdParams), @ScriptDir & "\..\example.ini")
+
+	$cmdParams[1] = @ScriptDir & "\..\nonexistent.ini"
+	Local $resultStr = _getIniFile($cmdParams)
+	Local $resultErr = @error
+	$test.assertNotEquals("nonexistent.ini", $resultStr, @ScriptDir & "\..\nonexistent.ini")
+	$test.assertEquals("nonexistent.ini", $resultStr, "Not a valid file")
+	$test.assertEquals("nonexistent.ini", $resultErr, 999)
 	return $test
 endfunc
 	
-func test_DoAllMappings()
-	Local $test	= newTest("Test _DoAllMappings")
+func test_parseIniFile()
+	Local $test	= newTest("Test _parseIniFile")
 	$test.addStep("No tests implemented yet", false)
+
+	; not-an-ini-file.ini
 	$test.addStep("Not a valid ini file", false)
+	
+	; malformed-ini-file.ini
 	$test.addStep("Missing a share value in ini file", false)
 	$test.addStep("Missing a friendlyName value in ini file", false)
 	return $test
@@ -83,9 +95,9 @@ endfunc
 
 func test_IsNormalFile()
 	Local $test	= newTest("Test _IsNormalFile")
-	$test.addStep("example.ini", false)
-	$test.addStep("nonexistent.ini", false)
-	$test.addStep("directory @ScriptDir", false)
+	$test.assertTrue("example.ini", _IsNormalFile(@ScriptDir & "\..\example.ini"))
+	$test.assertFalse("nonexistent.ini", _IsNormalFile(@ScriptDir & "\..\nonexistent.ini"))
+	$test.assertFalse("directory @ScriptDir", _IsNormalFile(@ScriptDir))
 	return $test
 endfunc
 

@@ -9,12 +9,16 @@ Const $g_iDriveMapAddShowAuthDlg = 8
 Const $g_sDefaultIniFileName = "mappings.ini"
 Const $DEBUG = 0
 
-_DoAllMappings(_getIniFile())
+_DoAllMappings(_getIniFile($CmdLine))
 
-func _getIniFile()
+func _getIniFile($params)
 	local $inifile = ''
-	if $CmdLine[0] > 0 then
-		$inifile = $CmdLine[1]
+	if IsArray($params) then
+		if $params[0] > 0 then
+			$inifile = $params[1]
+		else
+			Return SetError(998, 998, "Invalid command line parameters")
+		endif
 	else
 		$inifile = @ScriptDir & '\' & $g_sDefaultIniFileName
 	endif
