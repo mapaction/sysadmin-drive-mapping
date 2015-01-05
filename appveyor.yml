@@ -4,5 +4,5 @@ init:
 build: off
 test_script:
 - git submodule update --init
-- cd tests
-- autoit3 /ErrorStdOut /AutoIt3ExecuteScript testing/test-drive-mapper.au3 ci
+- cd testing
+- autoit3 /ErrorStdOut /AutoIt3ExecuteScript test-drive-mapper.au3 ci
