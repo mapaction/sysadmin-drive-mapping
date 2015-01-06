@@ -3,6 +3,6 @@ init:
 - cinst autoit.commandline
 build: off
 test_script:
-- git submodule update --init
+- git submodule update --init --recursive
 - cd testing
 - autoit3 /ErrorStdOut /AutoIt3ExecuteScript test-drive-mapper.au3 ci

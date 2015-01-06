@@ -2,6 +2,7 @@
 ; https://github.com/AutoItMicro/MicroUnitTestingFramework
 ; Updated tests to match the updated Micro syntax
 ;
+#include-once
 #include "../micro/micro.au3"
 #include "../drive-mapper.au3"
 
